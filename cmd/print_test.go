@@ -3,17 +3,18 @@ package cmd
 import (
 	"github.com/suyashkumar/dicom"
 	"github.com/suyashkumar/dicom/pkg/tag"
+	"path/filepath"
 	"reflect"
 	"testing"
 )
 
 func TestWalkDirectoryAllTags(t *testing.T) {
-	err, tags := getAllTags("../test-resources/simple.dcm")
+	err, tags := getAllTags(filepath.Join("..", "test-resources", "simple.dcm"))
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	result, err := walkDirectory("../test-resources", []string{}, tags)
+	result, err := walkDirectory(filepath.Join("..", "test-resources"), []string{}, tags)
 	if err != nil {
 		t.Error(err)
 		return
@@ -28,12 +29,12 @@ func TestWalkDirectoryAllTags(t *testing.T) {
 
 func TestWalkDirectorySingleTag(t *testing.T) {
 	singleTag, err := tag.FindByName("TransferSyntaxUID")
-	actual, err := walkDirectory("../test-resources", []string{}, []tag.Info{singleTag})
+	actual, err := walkDirectory(filepath.Join("..", "test-resources"), []string{}, []tag.Info{singleTag})
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	expected := [][]string{{"../test-resources/simple.dcm", "1.2.840.10008.1.2.1"}}
+	expected := [][]string{{filepath.Join("..", "test-resources", "simple.dcm"), "1.2.840.10008.1.2.1"}}
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf(`walkDirectory should return %v, got %v`, expected, actual)
 	}
@@ -41,7 +42,7 @@ func TestWalkDirectorySingleTag(t *testing.T) {
 
 func TestWalkDirectoryExclusion(t *testing.T) {
 	singleTag, err := tag.FindByName("TransferSyntaxUID")
-	actual, err := walkDirectory("../test-resources", []string{"**/simple.*"}, []tag.Info{singleTag})
+	actual, err := walkDirectory(filepath.Join("..", "test-resources"), []string{filepath.Join("**", "simple.*")}, []tag.Info{singleTag})
 	if err != nil {
 		t.Error(err)
 		return
