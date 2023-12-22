@@ -45,7 +45,9 @@ func (s integerSort) Less(i, j int) bool {
 
 var (
 	exclusions []string
+	limit      uint
 	numeric    bool
+	offset     uint
 	sorted     bool
 
 	rootCmd = &cobra.Command{
@@ -54,7 +56,7 @@ var (
 		Short: "Prints selected DICOM tags",
 		Long:  `Walks a directory and prints the selected tags for each DICOM that is found`,
 		Run: func(cmd *cobra.Command, args []string) {
-			printTags(args, exclusions, sorted, numeric)
+			printTags(args)
 		},
 	}
 )
@@ -68,11 +70,13 @@ func Execute() {
 
 func init() {
 	rootCmd.Flags().StringSliceVarP(&exclusions, "exclusion", "e", nil, "Exclude paths using glob")
+	rootCmd.Flags().UintVarP(&limit, "limit", "l", 0, "Limit the number of records printed, 0 indicates no limit")
 	rootCmd.Flags().BoolVarP(&numeric, "numeric", "n", false, "Sort by the first tag numerically")
+	rootCmd.Flags().UintVarP(&offset, "offset", "o", 0, "Skip printing a number of records")
 	rootCmd.Flags().BoolVarP(&sorted, "sort", "s", false, "Sort by the first tag")
 }
 
-func printTags(args []string, exclusions []string, sortString bool, sortInteger bool) {
+func printTags(args []string) {
 	tags := findAllTags(args[1:])
 	if len(tags) < 1 {
 		_, _ = fmt.Fprintln(os.Stderr, "No valid tags found")
@@ -84,12 +88,21 @@ func printTags(args []string, exclusions []string, sortString bool, sortInteger 
 		_, _ = fmt.Fprintf(os.Stderr, "Error processing directory: %s\n %v\n", args[0], err)
 		os.Exit(3)
 	}
-	if sortString {
+	if sorted {
 		sort.Sort(stringSort(values))
 	}
-	if sortInteger {
+	if numeric {
 		sort.Sort(integerSort(values))
 	}
+
+	recordCount := uint(len(values))
+	if limit > 0 && offset+limit < recordCount {
+		recordCount = offset + limit
+	}
+	if offset > recordCount {
+		offset = recordCount
+	}
+	values = values[offset:recordCount]
 
 	csvWriter := csv.NewWriter(os.Stdout)
 	_ = csvWriter.Write(headers)
