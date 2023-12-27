@@ -19,8 +19,9 @@ jobs:
       - name: Build
         run: go build -v .
       - name: Create Release
-        id: create_release
         run: gh release create -p --notes "Alpha testing improvements" ${{ github.ref }} './dicom-tags#dicom-tags'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   windows:
     runs-on: windows-latest
     needs: ubuntu
@@ -38,3 +39,5 @@ jobs:
         run: go build -v .
       - name: Upload Release Asset
         run: gh release upload ${{ github.ref }} './dicom-tags.exe#dicom-tags.exe'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
