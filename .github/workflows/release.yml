@@ -1,4 +1,4 @@
-name: Go Build And Test
+name: Release
 on:
   push:
     tags:
