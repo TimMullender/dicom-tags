@@ -40,6 +40,6 @@ jobs:
       - name: Build
         run: go build -v .
       - name: Upload Release Asset
-        run: gh release upload ${{ github.ref }} './dicom-tags.exe#dicom-tags.exe'
+        run: gh release upload ${{ github.ref_name }} './dicom-tags.exe#dicom-tags.exe'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
