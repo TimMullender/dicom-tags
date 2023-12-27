@@ -19,7 +19,7 @@ jobs:
       - name: Test
         run: go test -v ./...
       - name: Build
-        run: go build -v .
+        run: go build -v -ldflags="-X 'github.com/TimMullender/dicom-tags/cmd.Version=${{ github.ref_name }}'" .
       - name: Create Release
         run: gh release create -p --notes "Alpha testing improvements" ${{ github.ref }} './dicom-tags#dicom-tags'
         env:
@@ -38,7 +38,7 @@ jobs:
       - name: Test
         run: go test -v ./...
       - name: Build
-        run: go build -v .
+        run: go build -v -ldflags="-X 'github.com/TimMullender/dicom-tags/cmd.Version=${{ github.ref_name }}'" .
       - name: Upload Release Asset
         run: gh release upload ${{ github.ref_name }} './dicom-tags.exe#dicom-tags.exe'
         env:

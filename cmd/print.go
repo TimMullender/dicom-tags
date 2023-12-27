@@ -44,6 +44,8 @@ func (s integerSort) Less(i, j int) bool {
 }
 
 var (
+	Version = "dev"
+
 	exclusions []string
 	limit      uint
 	numeric    bool
@@ -51,10 +53,11 @@ var (
 	sorted     bool
 
 	rootCmd = &cobra.Command{
-		Use:   "dicom-tags [folder tag-list]",
-		Args:  cobra.MinimumNArgs(2),
-		Short: "Prints selected DICOM tags",
-		Long:  `Walks a directory and prints the selected tags for each DICOM that is found`,
+		Use:     "dicom-tags [folder tag-list]",
+		Version: Version,
+		Args:    cobra.MinimumNArgs(2),
+		Short:   "Prints selected DICOM tags",
+		Long:    `Walks a directory and prints the selected tags for each DICOM that is found`,
 		Run: func(cmd *cobra.Command, args []string) {
 			printTags(args)
 		},
