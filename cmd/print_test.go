@@ -14,7 +14,7 @@ func TestWalkDirectoryAllTags(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	result, err := walkDirectory(filepath.Join("..", "test-resources"), []string{}, tags)
+	result, err := walkDirectory(filepath.Join("..", "test-resources"), tags, nil)
 	if err != nil {
 		t.Error(err)
 		return
@@ -29,7 +29,7 @@ func TestWalkDirectoryAllTags(t *testing.T) {
 
 func TestWalkDirectorySingleTag(t *testing.T) {
 	singleTag, err := tag.FindByName("TransferSyntaxUID")
-	actual, err := walkDirectory(filepath.Join("..", "test-resources"), []string{}, []tag.Info{singleTag})
+	actual, err := walkDirectory(filepath.Join("..", "test-resources"), []tag.Info{singleTag}, nil)
 	if err != nil {
 		t.Error(err)
 		return
@@ -42,7 +42,36 @@ func TestWalkDirectorySingleTag(t *testing.T) {
 
 func TestWalkDirectoryExclusion(t *testing.T) {
 	singleTag, err := tag.FindByName("TransferSyntaxUID")
-	actual, err := walkDirectory(filepath.Join("..", "test-resources"), []string{filepath.Join("**", "simple.*")}, []tag.Info{singleTag})
+	exclusions = []string{filepath.Join("**", "simple.*")}
+	actual, err := walkDirectory(filepath.Join("..", "test-resources"), []tag.Info{singleTag}, nil)
+	exclusions = []string{}
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	expected := make([][]string, 0)
+	if !reflect.DeepEqual(actual, expected) {
+		t.Fatalf(`walkDirectory should return %v, got %v`, expected, actual)
+	}
+}
+
+func TestWalkDirectoryFilterMatches(t *testing.T) {
+	singleTag, err := tag.FindByName("TransferSyntaxUID")
+	filterTag, _ := tag.FindByName("Modality")
+	actual, err := walkDirectory(filepath.Join("..", "test-resources"), []tag.Info{singleTag}, map[tag.Info]string{filterTag: "CT", singleTag: "1.2.840.10008.1.2.1"})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	expected := [][]string{{filepath.Join("..", "test-resources", "simple.dcm"), "1.2.840.10008.1.2.1"}}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Fatalf(`walkDirectory should return %v, got %v`, expected, actual)
+	}
+}
+
+func TestWalkDirectoryFilterMismatch(t *testing.T) {
+	singleTag, err := tag.FindByName("TransferSyntaxUID")
+	actual, err := walkDirectory(filepath.Join("..", "test-resources"), []tag.Info{singleTag}, map[tag.Info]string{singleTag: "1.2.840.10008.1.2.2"})
 	if err != nil {
 		t.Error(err)
 		return

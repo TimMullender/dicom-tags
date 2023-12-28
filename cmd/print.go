@@ -47,6 +47,7 @@ var (
 	Version = "dev"
 
 	exclusions []string
+	filters    map[string]string
 	limit      uint
 	numeric    bool
 	offset     uint
@@ -73,6 +74,7 @@ func Execute() {
 
 func init() {
 	rootCmd.Flags().StringSliceVarP(&exclusions, "exclusion", "e", nil, "Exclude paths using glob")
+	rootCmd.Flags().StringToStringVarP(&filters, "filter", "f", map[string]string{}, "Filter the printed records using tag=value")
 	rootCmd.Flags().UintVarP(&limit, "limit", "l", 0, "Limit the number of records printed, 0 indicates no limit")
 	rootCmd.Flags().BoolVarP(&numeric, "numeric", "n", false, "Sort by the first tag numerically")
 	rootCmd.Flags().UintVarP(&offset, "offset", "o", 0, "Skip printing a number of records")
@@ -85,8 +87,18 @@ func printTags(args []string) {
 		_, _ = fmt.Fprintln(os.Stderr, "No valid tags found")
 		os.Exit(1)
 	}
+	filterValues := make(map[tag.Info]string, len(filters))
+	for tagName, value := range filters {
+		info, err := tag.FindByName(tagName)
+		if err == nil {
+			filterValues[info] = value
+		} else {
+			_, _ = fmt.Fprintf(os.Stderr, "Invalid Filter tag: %s\n %v\n", tagName, err)
+			os.Exit(4)
+		}
+	}
 	headers := append([]string{"Filename"}, args[1:]...)
-	values, err := walkDirectory(args[0], exclusions, tags)
+	values, err := walkDirectory(args[0], tags, filterValues)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Error processing directory: %s\n %v\n", args[0], err)
 		os.Exit(3)
@@ -113,7 +125,7 @@ func printTags(args []string) {
 	csvWriter.Flush()
 }
 
-func walkDirectory(directoryPath string, exclusions []string, tags []tag.Info) ([][]string, error) {
+func walkDirectory(directoryPath string, tags []tag.Info, filterValues map[tag.Info]string) ([][]string, error) {
 	values := make([][]string, 0)
 	err := filepath.Walk(directoryPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -141,7 +153,9 @@ func walkDirectory(directoryPath string, exclusions []string, tags []tag.Info) (
 					_, _ = fmt.Fprintf(os.Stderr, "Skipping %s#%s due to: %v\n", path, file.Name, err)
 					continue
 				}
-				values = append(values, getValues(path+"#"+file.Name, tags, dataset))
+				if matches(dataset, filterValues) {
+					values = append(values, getValues(path+"#"+file.Name, tags, dataset))
+				}
 			}
 			return nil
 		}
@@ -150,10 +164,29 @@ func walkDirectory(directoryPath string, exclusions []string, tags []tag.Info) (
 			_, _ = fmt.Fprintf(os.Stderr, "Skipping %s due to: %v\n", path, err)
 			return nil
 		}
-		values = append(values, getValues(path, tags, dataset))
+		if matches(dataset, filterValues) {
+			values = append(values, getValues(path, tags, dataset))
+		}
 		return nil
 	})
 	return values, err
+}
+
+func matches(dataset dicom.Dataset, filterValues map[tag.Info]string) bool {
+	if filterValues == nil {
+		return true
+	}
+	for info, value := range filterValues {
+		element, err := dataset.FindElementByTag(info.Tag)
+		if err == nil {
+			if getValue(info, element) != value {
+				return false
+			}
+		} else {
+			return false
+		}
+	}
+	return true
 }
 
 func getValues(p string, tags []tag.Info, dataset dicom.Dataset) []string {
@@ -163,15 +196,19 @@ func getValues(p string, tags []tag.Info, dataset dicom.Dataset) []string {
 		value := tagInfo.Name
 		element, err := dataset.FindElementByTag(tagInfo.Tag)
 		if err == nil {
-			if tagInfo.VM == "1" {
-				value = getFirstValue(element.Value)
-			} else {
-				value = element.Value.String()
-			}
+			value = getValue(tagInfo, element)
 		}
 		values = append(values, value)
 	}
 	return values
+}
+
+func getValue(tagInfo tag.Info, element *dicom.Element) string {
+	if tagInfo.VM == "1" {
+		return getFirstValue(element.Value)
+	} else {
+		return element.Value.String()
+	}
 }
 
 func getFirstValue(values dicom.Value) string {
