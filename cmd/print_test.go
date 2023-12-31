@@ -14,36 +14,36 @@ func TestWalkDirectoryAllTags(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	result, err := walkDirectory(filepath.Join("..", "test-resources"), tags, nil)
+	result, err := WalkDirectory(filepath.Join("..", "test-resources"), tags, nil)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 	if len(result) != 1 {
-		t.Fatalf(`walkDirectory should return 1 dicoms, got %d`, len(result))
+		t.Fatalf(`WalkDirectory should return 1 dicoms, got %d`, len(result))
 	}
 	if len(result[0])-1 != len(tags) {
-		t.Fatalf(`walkDirectory should return %d tags, got %d`, len(tags), len(result[0])-1)
+		t.Fatalf(`WalkDirectory should return %d tags, got %d`, len(tags), len(result[0])-1)
 	}
 }
 
 func TestWalkDirectorySingleTag(t *testing.T) {
 	singleTag, err := tag.FindByName("TransferSyntaxUID")
-	actual, err := walkDirectory(filepath.Join("..", "test-resources"), []tag.Info{singleTag}, nil)
+	actual, err := WalkDirectory(filepath.Join("..", "test-resources"), []tag.Info{singleTag}, nil)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 	expected := [][]string{{filepath.Join("..", "test-resources", "simple.dcm"), "1.2.840.10008.1.2.1"}}
 	if !reflect.DeepEqual(actual, expected) {
-		t.Fatalf(`walkDirectory should return %v, got %v`, expected, actual)
+		t.Fatalf(`WalkDirectory should return %v, got %v`, expected, actual)
 	}
 }
 
 func TestWalkDirectoryExclusion(t *testing.T) {
 	singleTag, err := tag.FindByName("TransferSyntaxUID")
 	exclusions = []string{filepath.Join("**", "simple.*")}
-	actual, err := walkDirectory(filepath.Join("..", "test-resources"), []tag.Info{singleTag}, nil)
+	actual, err := WalkDirectory(filepath.Join("..", "test-resources"), []tag.Info{singleTag}, nil)
 	exclusions = []string{}
 	if err != nil {
 		t.Error(err)
@@ -51,34 +51,34 @@ func TestWalkDirectoryExclusion(t *testing.T) {
 	}
 	expected := make([][]string, 0)
 	if !reflect.DeepEqual(actual, expected) {
-		t.Fatalf(`walkDirectory should return %v, got %v`, expected, actual)
+		t.Fatalf(`WalkDirectory should return %v, got %v`, expected, actual)
 	}
 }
 
 func TestWalkDirectoryFilterMatches(t *testing.T) {
 	singleTag, err := tag.FindByName("TransferSyntaxUID")
 	filterTag, _ := tag.FindByName("Modality")
-	actual, err := walkDirectory(filepath.Join("..", "test-resources"), []tag.Info{singleTag}, map[tag.Info]string{filterTag: "CT", singleTag: "1.2.840.10008.1.2.1"})
+	actual, err := WalkDirectory(filepath.Join("..", "test-resources"), []tag.Info{singleTag}, map[tag.Info]string{filterTag: "CT", singleTag: "1.2.840.10008.1.2.1"})
 	if err != nil {
 		t.Error(err)
 		return
 	}
 	expected := [][]string{{filepath.Join("..", "test-resources", "simple.dcm"), "1.2.840.10008.1.2.1"}}
 	if !reflect.DeepEqual(actual, expected) {
-		t.Fatalf(`walkDirectory should return %v, got %v`, expected, actual)
+		t.Fatalf(`WalkDirectory should return %v, got %v`, expected, actual)
 	}
 }
 
 func TestWalkDirectoryFilterMismatch(t *testing.T) {
 	singleTag, err := tag.FindByName("TransferSyntaxUID")
-	actual, err := walkDirectory(filepath.Join("..", "test-resources"), []tag.Info{singleTag}, map[tag.Info]string{singleTag: "1.2.840.10008.1.2.2"})
+	actual, err := WalkDirectory(filepath.Join("..", "test-resources"), []tag.Info{singleTag}, map[tag.Info]string{singleTag: "1.2.840.10008.1.2.2"})
 	if err != nil {
 		t.Error(err)
 		return
 	}
 	expected := make([][]string, 0)
 	if !reflect.DeepEqual(actual, expected) {
-		t.Fatalf(`walkDirectory should return %v, got %v`, expected, actual)
+		t.Fatalf(`WalkDirectory should return %v, got %v`, expected, actual)
 	}
 }
 

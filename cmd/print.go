@@ -98,7 +98,7 @@ func printTags(args []string) {
 		}
 	}
 	headers := append([]string{"Filename"}, args[1:]...)
-	values, err := walkDirectory(args[0], tags, filterValues)
+	values, err := WalkDirectory(args[0], tags, filterValues)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Error processing directory: %s\n %v\n", args[0], err)
 		os.Exit(3)
@@ -125,7 +125,7 @@ func printTags(args []string) {
 	csvWriter.Flush()
 }
 
-func walkDirectory(directoryPath string, tags []tag.Info, filterValues map[tag.Info]string) ([][]string, error) {
+func WalkDirectory(directoryPath string, tags []tag.Info, filterValues map[tag.Info]string) ([][]string, error) {
 	values := make([][]string, 0)
 	err := filepath.Walk(directoryPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
