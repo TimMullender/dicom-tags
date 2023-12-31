@@ -63,6 +63,8 @@ func main() {
 				_, _ = fmt.Fprintf(os.Stdout, "Adding tag (%s): %v\n", tagName, err)
 				if err == nil {
 					tags = append(tags, info)
+					records = searchFolder(folder, tags)
+					table.SetColumnWidth(len(tags), 150)
 					table.Refresh()
 				}
 			}
@@ -71,10 +73,8 @@ func main() {
 			addTagDialog.Show()
 		})
 		search := widget.NewButton("Search", func() {
-			result, err := cmd.WalkDirectory(folder.Text, tags, nil)
-			if err == nil {
-				records = result
-			}
+			records = searchFolder(folder, tags)
+			table.Refresh()
 		})
 		search.Disable()
 		folder.OnChanged = func(s string) {
@@ -88,21 +88,32 @@ func main() {
 			fileSave.Show()
 		})
 		table.CreateHeader = func() fyne.CanvasObject {
-			return widget.NewLabel("")
+			return widget.NewButton("", func() {})
 		}
 		table.UpdateHeader = func(id widget.TableCellID, template fyne.CanvasObject) {
+			button := template.(*widget.Button)
 			if id.Col == 0 {
-				template.(*widget.Label).SetText("Filename")
+				button.SetText("Filename")
 			} else if id.Col > 0 && id.Col <= len(tags) {
-				template.(*widget.Label).SetText(tags[id.Col-1].Name)
+				name := tags[id.Col-1].Name
+				button.SetText(name)
+				button.OnTapped = func() {
+					dialog.NewConfirm("Remove Tag", fmt.Sprintf("Do you want to remove %s", name), func(remove bool) {
+						if remove {
+							tags = append(tags[:id.Col-1], tags[id.Col:]...)
+							records = searchFolder(folder, tags)
+							table.Refresh()
+						}
+					}, w).Show()
+				}
 			} else {
-				template.(*widget.Label).SetText("")
+				button.SetText("")
 			}
 		}
 		for idx := 0; idx <= len(tags); idx++ {
 			table.SetColumnWidth(idx, 150)
 		}
-		content := container.NewVBox(
+		content := container.NewBorder(
 			container.New(layout.NewFormLayout(),
 				widget.NewButton("Select Folder", func() {
 					folderOpen.Show()
@@ -110,9 +121,20 @@ func main() {
 				folder,
 			),
 			container.NewCenter(container.NewHBox(search, addTag, save)),
+			nil, nil,
 			table,
 		)
 		w.SetContent(content)
 		w.ShowAndRun()
 	}
+}
+
+func searchFolder(folder *widget.Entry, tags []tag.Info) [][]string {
+	if len(folder.Text) > 0 && len(tags) > 0 {
+		result, err := cmd.WalkDirectory(folder.Text, tags, nil)
+		if err == nil {
+			return result
+		}
+	}
+	return [][]string{}
 }
