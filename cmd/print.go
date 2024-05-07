@@ -2,16 +2,20 @@ package cmd
 
 import (
 	"archive/zip"
+	"bufio"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/spf13/cobra"
 	"github.com/suyashkumar/dicom"
 	"github.com/suyashkumar/dicom/pkg/tag"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 type stringSort [][]string
@@ -46,6 +50,7 @@ func (s integerSort) Less(i, j int) bool {
 var (
 	Version = "dev"
 
+	archive    string
 	exclusions []string
 	filters    map[string]string
 	limit      uint
@@ -73,6 +78,7 @@ func Execute() {
 }
 
 func init() {
+	rootCmd.Flags().StringVarP(&archive, "archive", "a", "", "Create an archive of the selected DICOMs found at the given path")
 	rootCmd.Flags().StringSliceVarP(&exclusions, "exclusion", "e", nil, "Exclude paths using glob")
 	rootCmd.Flags().StringToStringVarP(&filters, "filter", "f", map[string]string{}, "Filter the printed records using tag=value")
 	rootCmd.Flags().UintVarP(&limit, "limit", "l", 0, "Limit the number of records printed, 0 indicates no limit")
@@ -123,6 +129,45 @@ func printTags(args []string) {
 	_ = csvWriter.Write(headers)
 	_ = csvWriter.WriteAll(values)
 	csvWriter.Flush()
+
+	if len(archive) > 0 {
+		createArchive(values)
+	}
+}
+
+func createArchive(values [][]string) {
+	file, err := os.Create(archive)
+	if err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, err)
+		os.Exit(5)
+	}
+	writer := zip.NewWriter(bufio.NewWriter(file))
+	defer writer.Close()
+	for _, value := range values {
+		path := value[0]
+		var itemReader io.Reader
+		_, check := os.Stat(path)
+		if errors.Is(check, os.ErrNotExist) && strings.Contains(path, "#") {
+			split := strings.Split(path, "#")
+			path = split[1]
+			zipReader, err := zip.OpenReader(split[0])
+			if err == nil {
+				defer zipReader.Close()
+				itemReader, err = zipReader.Open(path)
+			}
+		} else {
+			itemReader, err = os.Open(path)
+		}
+		if err == nil {
+			itemWriter, err := writer.Create(path)
+			if err == nil {
+				_, err = io.Copy(itemWriter, itemReader)
+			}
+		}
+		if err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "Skipping archive of %s due to: %v\n", path, err)
+		}
+	}
 }
 
 func walkDirectory(directoryPath string, tags []tag.Info, filterValues map[tag.Info]string) ([][]string, error) {
